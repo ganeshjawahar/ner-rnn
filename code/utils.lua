@@ -147,9 +147,9 @@ function utils.extractDataTensor(config,data)
 		end
 		local target=utils.splitByChar(entity,'%$%$%$')[4]
 		if target=='O' then
-			target_tensor[i]=0
-		else
 			target_tensor[i]=1
+		else
+			target_tensor[i]=2
 		end
 	end
 	return input_tensor,target_tensor
