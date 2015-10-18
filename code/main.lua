@@ -30,7 +30,7 @@ cmd:option('-min_freq',5,'words that occur less than <int> times will not be tak
 -- optimization
 cmd:option('-learning_rate',0.01,'learning rate')
 cmd:option('-batch_size',5,'number of sequences to train on in parallel')
-cmd:option('-max_epochs',25,'number of full passes through the training data')
+cmd:option('-max_epochs',5,'number of full passes through the training data')
 cmd:option('-dropout',1, 'apply dropout after each recurrent layer')
 cmd:option('-dropout_prob', 0.5, 'probability of zeroing a neuron (dropout probability)')
 
@@ -80,6 +80,8 @@ params.criterion=nn.SequencerCriterion(nn.CrossEntropyCriterion())
 local idx=torch.randperm(#params.train_input_tensors)
 print('Training ...')
 local start=sys.clock()
+params.best_dev_model=params.model
+params.best_dev_score=-1.0
 for epoch=1,params.max_epochs do
 	print('Epoch '..epoch..' ...')
 	local epoch_start=sys.clock()
@@ -103,6 +105,55 @@ for epoch=1,params.max_epochs do
 		end		
 	end
 	xlua.progress(#params.train_input_tensors,#params.train_input_tensors)
-	print(string.format("Epoch %d done in %.2f minutes. loss=%f\n\n",epoch,((sys.clock()-epoch_start)/60),(epoch_loss/iteration)))
+	-- Compute dev. score
+	print('Computing dev score ...')
+	local correct,total=0,0
+	for i=1,#params.dev_input_tensors do
+		xlua.progress(i,#params.dev_input_tensors)
+		local input_tensor={params.dev_input_tensors[i]}
+		local target_tensor={params.dev_target_tensors[i]}
+		local output=params.model:forward(input_tensor)
+		local out=output[1]
+		local tar=target_tensor[1]
+		for j=1,(#out)[1] do
+			local pred=1
+			if out[j][1]<out[j][2] then
+				pred=2
+			end
+			if pred==tar[j] then
+				correct=correct+1
+			end
+			total=total+1
+		end
+	end	
+	xlua.progress(#params.dev_input_tensors,#params.dev_input_tensors)
+	local dev_score=correct/total
+	print(string.format("Epoch %d done in %.2f minutes. loss=%f dev_score=%f\n\n",epoch,((sys.clock()-epoch_start)/60),(epoch_loss/iteration),dev_score))
+	if dev_score>params.best_dev_score then
+		params.best_dev_score=dev_score
+		params.best_dev_model=params.model:clone()
+	end
 end
-print(string.format("Done in %.2f seconds.",sys.clock()-start))
+print(string.format("Done in %.2f minutes.",((sys.clock()-start)/60)))
+
+-- Do the final testing
+print('Testing ...')
+start=sys.clock()
+fptr=io.open(params.res_file,'w')
+for i=1,#params.test_input_tensors do
+	local input_tensor={params.test_input_tensors[i]}
+	local output=params.best_dev_model:forward(input_tensor)
+	local result=''
+	local out=output[1]
+	for j=1,(#out)[1] do
+		local pred=1
+		if out[j][1]<out[j][2] then
+			pred=2
+		end
+		result=result..out[j][pred]..'$$$'..pred..'\t'
+	end
+	result=utils.trim(result)
+	fptr:write(result..'\n')
+end
+fptr.close()
+print(string.format("Done in %.2f minutes.",((sys.clock()-start)/60)))

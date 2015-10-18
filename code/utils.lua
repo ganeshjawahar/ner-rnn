@@ -133,8 +133,8 @@ function utils.buildVocab(config)
 	print(string.format("Vocab size after eliminating words occuring less than %d times: %d",config.min_freq,config.vocab_size))
 end
 
--- Function to extract data tensors
-function utils.extractDataTensor(config,data) 
+-- Function to extract input and target tensors
+function utils.extractInputTargetTensor(config,data) 
 	local content=utils.splitByChar(data,'\t')
 	local input_tensor=torch.Tensor(#content)
 	local target_tensor=torch.Tensor(#content)
@@ -155,8 +155,24 @@ function utils.extractDataTensor(config,data)
 	return input_tensor,target_tensor
 end
 
+-- Function to extract input tensors
+function utils.extractInputTensor(config,data) 
+	local content=utils.splitByChar(data,'\t')
+	local input_tensor=torch.Tensor(#content)
+	for i,entity in ipairs(content) do
+		local word=utils.splitByChar(entity,'%$%$%$')[1]
+		if config.word2index[word]~=nil then
+			input_tensor[i]=config.word2index[word]
+		else
+			input_tensor[i]=config.word2index['<UK>']
+		end
+	end
+	return input_tensor
+end
+
 -- Function to load input and target tensors.
 function utils.loadDataTensors(config) 
+	-- load train set tensors
 	config.train_input_tensors={}
 	config.train_target_tensors={}
 	local fptr=io.open(config.train_file,'r')
@@ -166,13 +182,48 @@ function utils.loadDataTensors(config)
 			break
 		end
 		local title=fptr:read()
-		local input_tensor,target_tensor=utils.extractDataTensor(config,title) 
+		local input_tensor,target_tensor=utils.extractInputTargetTensor(config,title) 
 		table.insert(config.train_input_tensors,input_tensor)
 		table.insert(config.train_target_tensors,target_tensor)
 		local abstract=fptr:read()
-		local input_tensor,target_tensor=utils.extractDataTensor(config,abstract) 
+		local input_tensor,target_tensor=utils.extractInputTargetTensor(config,abstract) 
 		table.insert(config.train_input_tensors,input_tensor)
 		table.insert(config.train_target_tensors,target_tensor)
+	end
+	fptr.close()
+	-- load dev set tensors
+	config.dev_input_tensors={}
+	config.dev_target_tensors={}
+	local fptr=io.open(config.dev_file,'r')
+	while true do
+		local pid=fptr:read()
+		if pid==nil then
+			break
+		end
+		local title=fptr:read()
+		local input_tensor,target_tensor=utils.extractInputTargetTensor(config,title) 
+		table.insert(config.dev_input_tensors,input_tensor)
+		table.insert(config.dev_target_tensors,target_tensor)
+		local abstract=fptr:read()
+		local input_tensor,target_tensor=utils.extractInputTargetTensor(config,abstract) 
+		table.insert(config.dev_input_tensors,input_tensor)
+		table.insert(config.dev_target_tensors,target_tensor)
+	end
+	fptr.close()
+	-- load test set tensors
+	config.test_input_tensors={}
+	local fptr=io.open(config.test_file,'r')
+	while true do
+		local pid=fptr:read()
+		if pid==nil then
+			break
+		end
+		local title=fptr:read()
+		local input_tensor=utils.extractInputTensor(config,title) 
+		table.insert(config.test_input_tensors,input_tensor)
+		local abstract=fptr:read()
+		local input_tensor=utils.extractInputTensor(config,abstract) 
+		table.insert(config.test_input_tensors,input_tensor)
 	end
 	fptr.close()
 end
