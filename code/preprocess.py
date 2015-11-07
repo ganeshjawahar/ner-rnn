@@ -21,27 +21,39 @@ def read_sentence(sent):
 			size=size+1
 		else:
 			if size!=0:
-				tokens.append(sent[start:start+size]+'$$$'+str(start)+'$$$'+str(size))
+				tokens.append(sent[start:start+size]+'$$$'+str(start)+'$$$'+str(start+size))
 				size=0
 		i=i+1
 	if size!=0:
-		tokens.append(sent[start:start+size]+'$$$'+str(start)+'$$$'+str(size))
+		tokens.append(sent[start:start+size]+'$$$'+str(start)+'$$$'+str(start+size))
 	return tokens
 
-def is_part_of_label(token,labels,typ):
-	token=token.strip().split('$$$')[0]
-	for label in labels:
-		if label.startswith(typ):
-			if token in label:
+count=0
+def is_part_of_label(token,labels):
+	global count
+	tokenContent=token.strip().split('$$$')
+	tokStart=int(tokenContent[1])
+	tokEnd=int(tokenContent[2])
+	if labels!=None:
+		for label in labels:
+			labelContent=label.strip().split('\t')
+			labStart=int(labelContent[2])
+			labEnd=int(labelContent[3])
+			if max(tokStart,labStart)<=min(tokEnd,labEnd):
+				count=count+1
 				return '$$$I'
 	return '$$$O'
 
-def get_annotated_tokens(sent,labels,typ):
+def get_annotated_tokens(sent,labels):
 	tokens=read_sentence(sent)
 	result=''
+	cmCount=0
 	for token in tokens:
-		result+=token+is_part_of_label(token,labels,typ)+'\t'
-	return result.strip()
+		label=is_part_of_label(token,labels)
+		if label=='$$$I':
+			cmCount=cmCount+1
+		result+=token+label+'\t'
+	return result.strip(),cmCount
 
 def get_tokens(sent):
 	tokens=read_sentence(sent)
@@ -50,27 +62,39 @@ def get_tokens(sent):
 		result+=token+'\t'
 	return result.strip()
 
+def get_map_entry(map,i):
+	if i in map:
+		return map[i]
+	return None
+
 def process1(label_file,text_file,dest_file):
 	#Read the label file
-	label_map={}
+	tit_label_map={}
+	abs_label_map={}	
 	with open(label_file,"r") as ins:
 		for line in ins:
 			content=line.strip().split('\t')
-			if content[0] not in label_map:
-				label_map[content[0]]=[]
-			label_map[content[0]].append(content[1]+':'+content[4])
+			if content[1]=='T':
+				if content[0] not in tit_label_map:
+					tit_label_map[content[0]]=[]
+				tit_label_map[content[0]].append(line.strip())
+			if content[1]=='A':
+				if content[0] not in abs_label_map:
+					abs_label_map[content[0]]=[]
+				abs_label_map[content[0]].append(line.strip())	
 	#Write the out file
 	res_file=open(dest_file,'w')
 	with open(text_file,"r") as ins:
 		for line in ins:
 			content=line.strip().split('\t')
 			pId=content[0]
-			if pId in label_map:
-				title=content[1]
-				abstract=content[2]
-				res_file.write(pId+'\n')
-				res_file.write(get_annotated_tokens(title,label_map[pId],'T')+'\n')
-				res_file.write(get_annotated_tokens(abstract,label_map[pId],'A')+'\n')
+			title=content[1]
+			abstract=content[2]
+			res_file.write(pId+'\n')			
+			text,cmCount=get_annotated_tokens(title,get_map_entry(tit_label_map,pId))
+			res_file.write(text+'\n')
+			text,cmCount=get_annotated_tokens(abstract,get_map_entry(abs_label_map,pId))
+			res_file.write(text+'\n')
 	res_file.close()
 
 def process2(text_file,dest_file):

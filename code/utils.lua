@@ -72,7 +72,7 @@ end
 
 -- Function to process a sentence to build vocab
 function utils.processSentence(config,sentence)
-	local pad=1
+	local pad=0
 	for _,word in ipairs(utils.getNgrams(sentence,1,pad)) do
 		config.total_count=config.total_count+1
 
@@ -152,6 +152,10 @@ function utils.extractInputTargetTensor(config,data)
 			target_tensor[i]=2
 		end
 	end
+	if config.gpu==1 then
+		input_tensor=input_tensor:cuda()
+		target_tensor=target_tensor:cuda()
+	end
 	return input_tensor,target_tensor
 end
 
@@ -212,6 +216,7 @@ function utils.loadDataTensors(config)
 	fptr.close()
 	-- load test set tensors
 	config.test_input_tensors={}
+	config.test_target_tensors={}
 	local fptr=io.open(config.test_file,'r')
 	while true do
 		local pid=fptr:read()
@@ -219,13 +224,36 @@ function utils.loadDataTensors(config)
 			break
 		end
 		local title=fptr:read()
-		local input_tensor=utils.extractInputTensor(config,title) 
+		local input_tensor,target_tensor=utils.extractInputTargetTensor(config,title) 
 		table.insert(config.test_input_tensors,input_tensor)
+		table.insert(config.test_target_tensors,target_tensor)
 		local abstract=fptr:read()
-		local input_tensor=utils.extractInputTensor(config,abstract) 
+		local input_tensor,target_tensor=utils.extractInputTargetTensor(config,abstract) 
 		table.insert(config.test_input_tensors,input_tensor)
+		table.insert(config.test_target_tensors,target_tensor)
 	end
 	fptr.close()
+end
+
+-- Function to initalize word weights
+function utils.initWordWeights(config,file)
+	print('initializing the pre-trained embeddings...')
+	local start=sys.clock()
+	local ic=0
+	for line in io.lines(file) do
+		local content=utils.splitByChar(line,' ')
+		local word=content[1]
+		if config.word2index[word]~=nil then
+			local tensor=torch.Tensor(#content-1)
+			for i=2,#content do
+				tensor[i-1]=tonumber(content[i])
+			end
+			config.word_vecs.weight[config.word2index[word]]=tensor
+			ic=ic+1
+		end
+	end
+	print(string.format("%d out of %d words initialized.",ic,#config.index2word))
+	print(string.format("Done in %.2f seconds.",sys.clock()-start))
 end
 
 return utils

@@ -16,8 +16,7 @@ for i in xrange(0,len(info_lines),3):
 		pred_content=title_pred[j].strip().split('$$$')
 		if pred_content[1]=='2':
 			run=run+1
-			end_index=str(int(title_content[1])+int(title_content[2]))
-			res_file.write(pId+'\tT:'+title_content[1]+':'+end_index+'\t'+str(run)+'\t'+pred_content[0]+'\t'+title_content[0]+'\n')
+			res_file.write(pId+'\tT:'+title_content[1]+':'+title_content[2]+'\t'+str(run)+'\t'+pred_content[0]+'\t'+title_content[0]+'\n')
 	abstract=info_lines[i+2].strip().split('\t')
 	abstract_pred=pred_lines[cur_pred+1].strip().split('\t')
 	for j in xrange(0,len(abstract)):
@@ -25,7 +24,6 @@ for i in xrange(0,len(info_lines),3):
 		pred_content=abstract_pred[j].strip().split('$$$')
 		if pred_content[1]=='2':
 			run=run+1
-			end_index=str(int(abs_content[1])+int(abs_content[2]))
-			res_file.write(pId+'\tA:'+abs_content[1]+':'+end_index+'\t'+str(run)+'\t'+pred_content[0]+'\t'+abs_content[0]+'\n')
+			res_file.write(pId+'\tA:'+abs_content[1]+':'+abs_content[2]+'\t'+str(run)+'\t'+pred_content[0]+'\t'+abs_content[0]+'\n')
 	cur_pred+=2
 res_file.close()
