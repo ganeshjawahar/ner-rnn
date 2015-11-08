@@ -16,7 +16,7 @@ The task details can be accessed at: www.biocreative.org/tasks/biocreative-v/cem
 4. xlua <br />
 5. rnn <br />
 6. cunn (if you are running in a gpu) <br />
-Packages [2-5] can be installed using Luarocks. <br />
+Packages [2-6] can be installed using Luarocks. <br />
 For example,<br />
 *To install nn,* <br />
 luarocks install nn <br />
