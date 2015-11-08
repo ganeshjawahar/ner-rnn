@@ -33,6 +33,7 @@ cmd:option('-max_epochs',100,'number of full passes through the training data')
 cmd:option('-reg',1e-4,'regularization parameter l2-norm')
 cmd:option('-clip',5,'threshold to clip gradients')
 cmd:option('-pre_train',0,'initalize word embeddings with pre-trained word vectors')
+cmd:option('-pre_train_embeddings','vectors.840B.300d.txt','initalize word embeddings with pre-trained word vectors')
 -- GPU/CPU
 cmd:option('-gpu',1,'1=use gpu; 0=use cpu;')
 -- Book-keeping
@@ -84,7 +85,7 @@ if params.gpu==1 then
 	params.soft=params.soft:cuda()
 end
 if params.pre_train==1 then
-	utils.initWordWeights(params,'/home/ganesh/Downloads/t2v/vectors.840B.300d.txt')
+	utils.initWordWeights(params)
 end
 
 -- train the model
